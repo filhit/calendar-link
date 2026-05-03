@@ -1,18 +1,66 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Owlbear session calendar</title>
     <style>
-        body { font-family: system-ui, -apple-system, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background: #f4f7f6; }
-        .card { background: white; padding: 2rem; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 350px; text-align: center; }
-        h1 { margin-top: 0; color: #333; font-size: 1.5rem; }
-        p { color: #666; white-space: pre-line; margin-bottom: 1.5rem; }
-        .btn { display: block; padding: 12px; margin-bottom: 10px; text-decoration: none; border-radius: 8px; color: white; font-weight: 600; font-size: 0.9rem; }
-        .google { background: #ea4335; }
-        .outlook { background: #0078d4; }
-        .ics { background: #333; }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background: #f4f7f6;
+        }
+
+        .card {
+            background: white;
+            padding: 2rem;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 350px;
+            text-align: center;
+        }
+
+        h1 {
+            margin-top: 0;
+            color: #333;
+            font-size: 1.5rem;
+        }
+
+        p {
+            color: #666;
+            white-space: pre-line;
+            margin-bottom: 1.5rem;
+        }
+
+        .btn {
+            display: block;
+            padding: 12px;
+            margin-bottom: 10px;
+            text-decoration: none;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .google {
+            background: #ea4335;
+        }
+
+        .outlook {
+            background: #0078d4;
+        }
+
+        .ics {
+            background: #333;
+        }
     </style>
 </head>
+
 <body>
     <div class="card">
         <h1>Добавить в календарь</h1>
@@ -21,43 +69,52 @@
         <a id="outlook" class="btn outlook" target="_blank">Outlook.com</a>
         <a id="ics" class="btn ics" download="event.ics">ICS File</a>
     </div>
-    <script>
-const params = new URLSearchParams(window.location.search);
-const date = params.get('date'); // 2025-12-31
-const title = params.get('title') || 'Owlbeardm Session';
-const encodedTitle = encodeURIComponent(title);
-const desc = params.get('desc') || ''
-const encodedDesc = encodeURIComponent(desc);
+    <script type="module">
+        const params = new URLSearchParams(window.location.search);
+        const date = params.get('date'); // 2025-12-31
+        const [y, m, d] = date.split('-');
+        const dateObj = new Date(y, m - 1, d);
+        const longDate = dateObj.toLocaleDateString(undefined, { 
+            day: 'numeric', 
+            month: 'long', 
+            year: 'numeric' 
+        });
+        const title = params.get('title') || 'Owlbeardm Session';
+        const encodedTitle = encodeURIComponent(title);
+        const desc = params.get('desc') || ''
+        const encodedDesc = encodeURIComponent(desc);
 
-if (date) {
-    const gStart = date.replace(/-/g, '') + 'T200000';
-    const gEnd = date.replace(/-/g, '') + 'T230000';
-    const googleUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodedTitle}&details=${encodedDesc}&dates=${gStart}/${gEnd}&ctz=Europe/Minsk`;
+        if (date) {
+            const gStart = date.replace(/-/g, '') + 'T200000';
+            const gEnd = date.replace(/-/g, '') + 'T230000';
+            const googleUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodedTitle}&details=${encodedDesc}&dates=${gStart}/${gEnd}&ctz=Europe/Minsk`;
 
-    const oStart = `${date}T17:00:00Z`;
-    const oEnd = `${date}T20:00:00Z`;
-    const outlookUrl = `https://outlook.live.com/calendar/0/deeplink/compose?path=/calendar/action/compose&rru=addevent&subject=${encodedTitle}&body=${encodedDesc}&startdt=${oStart}&enddt=${oEnd}`;
+            const oStart = `${date}T17:00:00Z`;
+            const oEnd = `${date}T20:00:00Z`;
+            const outlookUrl = `https://outlook.live.com/calendar/0/deeplink/compose?path=/calendar/action/compose&rru=addevent&subject=${encodedTitle}&body=${encodedDesc}&startdt=${oStart}&enddt=${oEnd}`;
 
-    const icsContent = [
-        'BEGIN:VCALENDAR',
-        'VERSION:2.0',
-        'BEGIN:VEVENT',
-        `DTSTART;TZID=Europe/Minsk:${gStart}`,
-        `DTEND;TZID=Europe/Minsk:${gEnd}`,
-        `SUMMARY:${title}`,
-        `DESCRIPTION:${desc}`,
-        'END:VEVENT',
-        'END:VCALENDAR'
-    ].join('\n');
-    const icsBlob = new Blob([icsContent], { type: 'text/calendar' });
-    const icsUrl = URL.createObjectURL(icsBlob);
+            const icsContent = [
+                'BEGIN:VCALENDAR',
+                'VERSION:2.0',
+                'BEGIN:VEVENT',
+                `DTSTART;TZID=Europe/Minsk:${gStart}`,
+                `DTEND;TZID=Europe/Minsk:${gEnd}`,
+                `SUMMARY:${title}`,
+                `DESCRIPTION:${desc}`,
+                'END:VEVENT',
+                'END:VCALENDAR'
+            ].join('\n');
+            const icsBlob = new Blob([icsContent], { type: 'text/calendar' });
+            const icsUrl = URL.createObjectURL(icsBlob);
 
-    // Set the links
-    document.getElementById('google').href = googleUrl;
-    document.getElementById('outlook').href = outlookUrl;
-    document.getElementById('ics').href = icsUrl;
-}
+            // Set the links
+            document.getElementById('google').href = googleUrl;
+            document.getElementById('outlook').href = outlookUrl;
+            document.getElementById('ics').href = icsUrl;
+            document.getElementById('event-details').innerText = `${title}\n${longDate}\n20:00 — 23:00 по Минску`;
+        }
     </script>
 
 </body>
+
 </html>
