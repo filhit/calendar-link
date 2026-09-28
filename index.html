@@ -58,6 +58,60 @@
         .ics {
             background: #333;
         }
+
+        .edit {
+            background: #767676;
+        }
+
+        .btn {
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        form {
+            text-align: left;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 12px;
+            font-size: 0.8rem;
+            color: #666;
+            font-weight: 600;
+        }
+
+        input,
+        textarea {
+            display: block;
+            width: 100%;
+            margin-top: 4px;
+            padding: 9px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-family: inherit;
+            box-sizing: border-box;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 70px;
+        }
+
+        .row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .row .btn {
+            margin-bottom: 0;
+            flex: 1;
+        }
+
+        #edit {
+            width: 100%;
+        }
     </style>
 </head>
 
@@ -68,23 +122,86 @@
         <a id="google" class="btn google" target="_blank">Google Calendar</a>
         <a id="outlook" class="btn outlook" target="_blank">Outlook.com</a>
         <a id="ics" class="btn ics" download="event.ics">ICS File</a>
+        <button id="edit" class="btn edit" type="button">Изменить</button>
+
+        <form id="editor" hidden>
+            <label>Дата<input type="date" id="f-date" required></label>
+            <label>Название<input type="text" id="f-title"></label>
+            <label>Описание<textarea id="f-desc"></textarea></label>
+            <div class="row">
+                <button type="submit" class="btn google">OK</button>
+                <button type="button" id="cancel" class="btn edit">Отмена</button>
+            </div>
+        </form>
     </div>
     <script type="module">
         const params = new URLSearchParams(window.location.search);
-        const date = params.get('date'); // 2025-12-31
-        const [y, m, d] = date.split('-');
-        const dateObj = new Date(y, m - 1, d);
-        const longDate = dateObj.toLocaleDateString(undefined, { 
-            day: 'numeric', 
-            month: 'long', 
-            year: 'numeric' 
-        });
+        const date = params.get('date');
         const title = params.get('title') || 'Owlbeardm Session';
-        const encodedTitle = encodeURIComponent(title);
-        const desc = params.get('desc') || ''
-        const encodedDesc = encodeURIComponent(desc);
+        const desc = params.get('desc') || '';
+
+        const editor = document.getElementById('editor');
+        const editBtn = document.getElementById('edit');
+        const cancelBtn = document.getElementById('cancel');
+        const details = document.getElementById('event-details');
+        const links = ['google', 'outlook', 'ics'].map(id => document.getElementById(id));
+
+        function today() {
+            const d = new Date();
+            const pad = n => String(n).padStart(2, '0');
+            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+        }
+
+        function icsEscape(value) {
+            return value
+                .replace(/\\/g, '\\\\')
+                .replace(/;/g, '\\;')
+                .replace(/,/g, '\\,')
+                .replace(/\r\n|\r|\n/g, '\\n');
+        }
+
+        function showCard() {
+            links.forEach(a => a.hidden = false);
+            editBtn.hidden = false;
+            details.hidden = false;
+            editor.hidden = true;
+        }
+
+        function openEditor() {
+            document.getElementById('f-date').value = date || today();
+            document.getElementById('f-title').value = title;
+            document.getElementById('f-desc').value = desc;
+            cancelBtn.hidden = !date;
+            links.forEach(a => a.hidden = true);
+            editBtn.hidden = true;
+            details.hidden = true;
+            editor.hidden = false;
+        }
+
+        editBtn.addEventListener('click', openEditor);
+        cancelBtn.addEventListener('click', showCard);
+
+        editor.addEventListener('submit', e => {
+            e.preventDefault();
+            const next = new URLSearchParams();
+            next.set('date', document.getElementById('f-date').value);
+            next.set('title', document.getElementById('f-title').value);
+            next.set('desc', document.getElementById('f-desc').value);
+            window.location.search = next.toString();
+        });
 
         if (date) {
+            const [y, m, d] = date.split('-');
+            const dateObj = new Date(y, m - 1, d);
+            const longDate = dateObj.toLocaleDateString(undefined, {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+            });
+            const encodedTitle = encodeURIComponent(title);
+            const encodedDesc = encodeURIComponent(desc);
+
             const gStart = date.replace(/-/g, '') + 'T200000';
             const gEnd = date.replace(/-/g, '') + 'T230000';
             const googleUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodedTitle}&details=${encodedDesc}&dates=${gStart}/${gEnd}&ctz=Europe/Minsk`;
@@ -99,19 +216,19 @@
                 'BEGIN:VEVENT',
                 `DTSTART;TZID=Europe/Minsk:${gStart}`,
                 `DTEND;TZID=Europe/Minsk:${gEnd}`,
-                `SUMMARY:${title}`,
-                `DESCRIPTION:${desc}`,
+                `SUMMARY:${icsEscape(title)}`,
+                `DESCRIPTION:${icsEscape(desc)}`,
                 'END:VEVENT',
                 'END:VCALENDAR'
             ].join('\n');
             const icsBlob = new Blob([icsContent], { type: 'text/calendar' });
-            const icsUrl = URL.createObjectURL(icsBlob);
 
-            // Set the links
             document.getElementById('google').href = googleUrl;
             document.getElementById('outlook').href = outlookUrl;
-            document.getElementById('ics').href = icsUrl;
-            document.getElementById('event-details').innerText = `${title}\n${longDate}\n20:00 — 23:00 по Минску`;
+            document.getElementById('ics').href = URL.createObjectURL(icsBlob);
+            details.innerText = `${title}\n${longDate}\n20:00 — 23:00 по Минску`;
+        } else {
+            openEditor();
         }
     </script>
 
